@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 import 'data.dart';
 
@@ -9,6 +10,13 @@ const ink = Color(0xFF10213F);
 const muted = Color(0xFF6B7690);
 const border = Color(0xFFE2E7F0);
 const fbUrl = 'https://www.facebook.com/share/19bfyPV4c5/?mibextid=wwXIfr';
+
+// ---- আপডেট সেটিং ----
+// প্রতিবার নতুন APK বানানোর আগে kBuild-এর সংখ্যা ১ বাড়াবেন
+// এবং ওয়েবসাইটের version.json-এও একই build নম্বর দেবেন।
+const kBuild = 1;
+// আপনার ওয়েবসাইটে যেখানে version.json আছে সেই লিংক (নিচেরটা বদলে নিন)
+const updateUrl = 'https://YOUR-WEBSITE.com/version.json';
 
 const days = ['রবিবার', 'সোমবার', 'মঙ্গলবার', 'বুধবার', 'বৃহস্পতিবার'];
 const shortDays = ['রবি', 'সোম', 'মঙ্গল', 'বুধ', 'বৃহঃ'];
@@ -50,6 +58,55 @@ class _HomePageState extends State<HomePage> {
     return w <= 4 ? w : 0;
   }();
   int group = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkUpdate();
+  }
+
+  Future<void> _checkUpdate({bool manual = false}) async {
+    try {
+      final r = await http
+          .get(Uri.parse(updateUrl))
+          .timeout(const Duration(seconds: 6));
+      if (r.statusCode != 200) throw Exception('bad status');
+      final j = jsonDecode(r.body) as Map;
+      final build = (j['build'] as num).toInt();
+      if (!mounted) return;
+      if (build > kBuild) {
+        final apk = Uri.parse(updateUrl).resolve(j['apk'] as String);
+        await showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('নতুন আপডেট এসেছে'),
+            content: Text(
+                'ভার্সন ${j['version'] ?? ''}\n${j['notes'] ?? ''}'.trim()),
+            actions: [
+              TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('পরে')),
+              FilledButton(
+                  onPressed: () {
+                    launchUrl(apk, mode: LaunchMode.externalApplication);
+                    Navigator.pop(ctx);
+                  },
+                  child: const Text('আপডেট করুন')),
+            ],
+          ),
+        );
+      } else if (manual) {
+        _snack('আপনার অ্যাপ সর্বশেষ ভার্সনে আছে');
+      }
+    } catch (_) {
+      if (manual) _snack('ইন্টারনেট নেই বা আপডেট চেক করা যায়নি');
+    }
+  }
+
+  void _snack(String m) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
+  }
 
   int get today => DateTime.now().weekday % 7;
   int get nowMin => DateTime.now().hour * 60 + DateTime.now().minute;
@@ -297,6 +354,10 @@ class _HomePageState extends State<HomePage> {
           const SizedBox(height: 4),
           const Text('It is not an official website.',
               style: TextStyle(fontSize: 13, color: muted)),
+          const SizedBox(height: 6),
+          TextButton(
+              onPressed: () => _checkUpdate(manual: true),
+              child: const Text('আপডেট আছে কিনা দেখুন')),
         ]),
       );
 }

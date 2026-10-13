@@ -10,6 +10,16 @@ dependencies:
   flutter:
     sdk: flutter
   url_launcher: ^6.2.0
+  http: ^1.2.0
+
+dev_dependencies:
+  flutter_launcher_icons: ^0.13.1
+
+# অ্যাপের আইকন: assets/icon.png ফাইলটা আপনার লোগো দিয়ে বদলে দিন (৫১২x৫১২ বা বড় PNG)
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: "assets/icon.png"
 
 flutter:
   uses-material-design: true
